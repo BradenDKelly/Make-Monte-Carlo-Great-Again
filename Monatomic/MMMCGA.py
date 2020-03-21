@@ -52,7 +52,7 @@ def calc_variables():
 
     # Residual energy per atom for full potential with LRC
     # LRC plus cut (but not shifted) PE divided by N
-    e_r = VariableType(nam='E/N Residual full', val=potential_lrc(rho, r_cut) + total.pot / nAtoms)
+    e_r = VariableType(nam='E/N Residual', val=potential_lrc(rho, r_cut) + total.pot / nAtoms)
 
     # KolafaNezbeda EOS Residual energy per atom for full potential with LRC
     # LRC plus cut (but not shifted) PE divided by N
@@ -87,7 +87,7 @@ def calc_variables():
 
 np.random.seed(111)
 
-temperature = 1.2996
+temperature = 0.8772 #1.2996
 rho = 0.75
 nAtoms = 256
 epsilon = 1.0
