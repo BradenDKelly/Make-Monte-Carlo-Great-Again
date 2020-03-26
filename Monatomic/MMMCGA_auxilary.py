@@ -1,11 +1,12 @@
 fast = True
-slow=False
-jit=True
+slow = False
+jit = True
 avg = 0
 msd = 1
 cke = 2
 import numba as nb
 import numpy as np
+
 
 class PotentialType:
     """A composite variable for interactions."""
@@ -62,9 +63,7 @@ def potential(box, r_cut, r):
 
     for i in range(n - 1):
         partial = potential_1(r[i, :], box, r_cut, r[i + 1:, :])
-        #if partial.ovr:
-        #    total.ovr = True
-        #    break
+
         total = total + partial
 
     return total
@@ -94,18 +93,18 @@ def potential_1(ri, box, r_cut, r):
     assert ri.size == 3, 'Dimension error for ri in potential_1'
 
     sr2_ovr = 1.77  # Overlap threshold (pot > 100)
-    r_cut_box = r_cut  #/ box
+    r_cut_box = r_cut  # / box
     r_cut_box_sq = r_cut_box ** 2
-    #box_sq = box ** 2
+    # box_sq = box ** 2
 
     if fast:
         rij = ri - r  # Get all separation vectors from partners
-        rij = rij - np.rint(rij/box)*box  # Periodic boundary conditions in box=1 units
+        rij = rij - np.rint(rij / box) * box  # Periodic boundary conditions in box=1 units
         rij_sq = np.sum(rij ** 2, axis=1)  # Squared separations
         in_range = rij_sq < r_cut_box_sq  # Set flags for within cutoff
-        #rij_sq = rij_sq  * box_sq                          # Now in sigma=1 units
+        # rij_sq = rij_sq  * box_sq                          # Now in sigma=1 units
         sr2 = np.where(in_range, 1.0 / rij_sq, 0.0)  # (sigma/rij)**2, only if in range
-        ovr =sr2 > sr2_ovr  # Set flags for any overlaps  np.sqrt(rij_sq) < 0.75 #
+        ovr = sr2 > sr2_ovr  # Set flags for any overlaps  np.sqrt(rij_sq) < 0.75 #
         if np.any(ovr):
             partial = PotentialType(pot=0.0, vir=0.0, ovr=True)
             return partial
@@ -119,10 +118,10 @@ def potential_1(ri, box, r_cut, r):
         partial = PotentialType(pot=0.0, vir=0.0, ovr=False)
         for rj in r:
             rij = ri - rj  # Separation vector
-            rij = rij - np.rint(rij/box)*box  # Periodic boundary conditions in box=1 units
+            rij = rij - np.rint(rij / box) * box  # Periodic boundary conditions in box=1 units
             rij_sq = np.sum(rij ** 2)  # Squared separation
             if rij_sq < r_cut_box_sq:  # Check within cutoff
-                #rij_sq = rij_sq #* box_sq  # Now in sigma=1 units
+                # rij_sq = rij_sq #* box_sq  # Now in sigma=1 units
                 sr2 = 1.0 / rij_sq  # (sigma/rij)**2
                 ovr = sr2 > sr2_ovr  # Overlap if too close
                 if ovr:
@@ -132,22 +131,22 @@ def potential_1(ri, box, r_cut, r):
                 sr12 = sr6 ** 2
                 pot = sr12 - sr6  # LJ pair potential (cut but not shifted)
                 vir = pot + sr12  # LJ pair virial
-                #lap = (22.0 * sr12 - 5.0 * sr6) * sr2  # LJ pair Laplacian
+                # lap = (22.0 * sr12 - 5.0 * sr6) * sr2  # LJ pair Laplacian
                 partial = partial + PotentialType(pot=pot, vir=vir, ovr=ovr)
     elif jit:
         pot, vir, ovr = FastEnergy(sr2_ovr, r_cut_box_sq, r, ri, box)
         partial = PotentialType(pot=pot, vir=vir, ovr=ovr)
-        #partial = PotentialType(pot=0.0, vir=0.0, ovr=False)
+        # partial = PotentialType(pot=0.0, vir=0.0, ovr=False)
     else:
         print("no energy method has been selected for pair energies")
-
 
     # Multiply results by numerical factors
     partial.pot = partial.pot * 4.0  # 4*epsilon
     partial.vir = partial.vir * 24.0 / 3.0  # 24*epsilon and divide virial by 3
-    #partial.lap = partial.lap * 24.0 * 2.0  # 24*epsilon and factor 2 for ij and ji
+    # partial.lap = partial.lap * 24.0 * 2.0  # 24*epsilon and factor 2 for ij and ji
 
     return partial
+
 
 @nb.njit
 def FastEnergy(sr2_ovr, r_cut_box_sq, p, pi, box):
@@ -159,26 +158,24 @@ def FastEnergy(sr2_ovr, r_cut_box_sq, p, pi, box):
         rij = rij - np.rint(rij / box) * box  # Periodic boundary conditions in box=1 units
         rij_sq = np.sum(rij ** 2)  # Squared separation
 
-        #rij = np.abs(p[i] - pi )
-        #rij = np.minimum(rij, box - rij)
-        #rij_sq = np.sum(rij ** 2)
-
+        # rij = np.abs(p[i] - pi )
+        # rij = np.minimum(rij, box - rij)
+        # rij_sq = np.sum(rij ** 2)
 
         if rij_sq < r_cut_box_sq:  # Check within cutoff
-            #rij_sq = rij_sq  # * box_sq  # Now in sigma=1 units
+            # rij_sq = rij_sq  # * box_sq  # Now in sigma=1 units
             sr2 = 1.0 / rij_sq  # (sigma/rij)**2
             ovr = sr2 > sr2_ovr  # Overlap if too close
-            if ovr: #sr2 > sr2_ovr:
+            if ovr:  # sr2 > sr2_ovr:
                 return pot, vir, True
 
             sr6 = sr2 ** 3
             sr12 = sr6 ** 2
             pot += (sr12 - sr6)  # LJ pair potential (cut but not shifted)
-            vir += (2*sr12 - sr6) # LJ pair virial
+            vir += (2 * sr12 - sr6)  # LJ pair virial
             # lap = (22.0 * sr12 - 5.0 * sr6) * sr2  # LJ pair Laplacian
-            #partial = partial + PotentialType(pot=pot, vir=vir, ovr=ovr)
+            # partial = partial + PotentialType(pot=pot, vir=vir, ovr=ovr)
     return pot, vir, ovr
-
 
 
 def metropolis(delta):
@@ -229,7 +226,6 @@ def potential_lrc(density, r_cut):
     return math.pi * ((8.0 / 9.0) * sr3 ** 3 - (8.0 / 3.0) * sr3) * density
 
 
-
 def pressure_lrc(density, r_cut):
     """Calculates long-range correction for Lennard-Jones pressure."""
 
@@ -238,6 +234,7 @@ def pressure_lrc(density, r_cut):
     # density, r_cut, and the results, are in LJ units where sigma = 1, epsilon = 1
     sr3 = 1.0 / r_cut ** 3
     return math.pi * ((32.0 / 9.0) * sr3 ** 3 - (16.0 / 3.0) * sr3) * density ** 2
+
 
 def pressure_delta(density, r_cut):
     """Calculates correction for Lennard-Jones pressure due to discontinuity in the potential at r_cut."""
@@ -248,16 +245,18 @@ def pressure_delta(density, r_cut):
     sr3 = 1.0 / r_cut ** 3
     return math.pi * (8.0 / 3.0) * (sr3 ** 3 - sr3) * density ** 2
 
-def random_translate_vector( dr_max, old):
+
+def random_translate_vector(dr_max, old):
     """Returns a vector translated by a random amount."""
 
     import numpy as np
 
     # A randomly chosen vector is added to the old one
 
-    zeta = np.random.rand(3)   # Three uniform random numbers in range (0,1)
-    zeta = 2*zeta - 1.0      # Now in range (-0.5,+0.5)
-    return old + zeta * dr_max # Move to new position
+    zeta = np.random.rand(3)  # Three uniform random numbers in range (0,1)
+    zeta = 2 * zeta - 1.0  # Now in range (-0.5,+0.5)
+    return old + zeta * dr_max  # Move to new position
+
 
 def PrintPDB(r, step, name=""):
     f = open(str(name) + "system_step_" + str(step) + ".pdb", 'w')
@@ -282,7 +281,8 @@ def PrintPDB(r, step, name=""):
 
     f.close()
 
-def InitCubicGrid(nMolInit,initDensity):
+
+def InitCubicGrid(nMolInit, initDensity):
     """
     - Assign molecule COM's to a simple cubic lattice.
     - create entries in class "Mol" list, titled "mol"
@@ -290,7 +290,7 @@ def InitCubicGrid(nMolInit,initDensity):
     rMol = np.zeros((nMolInit, 3), dtype=np.float_)
     box = (nMolInit / initDensity) ** (1.0 / 3.0)
     nCube = 2
-    initConfig='centered'
+    initConfig = 'centered'
 
     while nCube ** 3 < nMolInit:
         nCube += 1

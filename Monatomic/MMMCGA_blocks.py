@@ -1,16 +1,17 @@
 # Internal variables
-col_width = 15              # Must be large enough to allow sensible format
-nam_width = 2*col_width+1   # At most two column widths plus spacer
-colf_fmt  = ' {:15.6f}'     # Format for floats; we assume that 6 dp will be sufficient
-cole_fmt  = ' {:15.4e}'     # Alternative format for floats, suitable for small numbers
-head_fmt  = ' {:>15}'       # Format for heading strings
-col1a_fmt = '{:>15}'        # Format for column 1 strings
-col1i_fmt = '{:15d}'        # Format for column 1 integers
-sngl_fmt  = '{:40}{:15.6f}' # Format for single line output
+col_width = 15  # Must be large enough to allow sensible format
+nam_width = 2 * col_width + 1  # At most two column widths plus spacer
+colf_fmt = ' {:15.6f}'  # Format for floats; we assume that 6 dp will be sufficient
+cole_fmt = ' {:15.4e}'  # Alternative format for floats, suitable for small numbers
+head_fmt = ' {:>15}'  # Format for heading strings
+col1a_fmt = '{:>15}'  # Format for column 1 strings
+col1i_fmt = '{:15d}'  # Format for column 1 integers
+sngl_fmt = '{:40}{:15.6f}'  # Format for single line output
 
 avg = 0
 msd = 1
 cke = 2
+
 
 def blk_begin(n_avg):
     """Zero average variables at start of each block."""
@@ -23,7 +24,7 @@ def blk_begin(n_avg):
     blk_msd = np.zeros(n_avg, dtype=np.float_)
 
 
-def blk_add(variables,n_avg):
+def blk_add(variables, n_avg):
     """Increment block-average variables."""
 
     import numpy as np
@@ -123,6 +124,7 @@ def run_begin(variables):
     print('-' * line_width)
     return n_avg
 
+
 def run_end(variables):
     """Write out averages and error estimates at end of run."""
 
@@ -141,7 +143,7 @@ def run_end(variables):
     run_err = run_err - run_avg ** 2  # Compute fluctuations of block averages
 
     # Normalize and get estimated errors guarding against roundoff
-    run_err = np.where(run_err > 0.0, np.sqrt(run_err / run_nrm), 0.0)
+    run_err = np.where(run_err > 0.0, np.sqrt(np.abs(run_err) / run_nrm), 0.0)  # np.abs avoids a runtime error
 
     print('-' * line_width)
     print((col1a_fmt + line_fmt).format('Run averages', *run_avg))
